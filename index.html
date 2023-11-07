@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Page Title</title>
+        <!-- Link to your stylesheet -->
+        <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="fps-container">
@@ -20,9 +22,14 @@
     <input type="file" id="importButton" style="display: none;">
     <label for="importButton">Import Scene</label>
 
-    <!-- Scripts at the end of the body to ensure the DOM is loaded -->
-    <script src="https://cdn.babylonjs.com/babylon.js" type="text/javascript"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js" type="text/javascript"></script>
-    <script src="content.js" type="text/javascript"></script>
+<!-- Scripts at the end of the body to ensure the DOM is loaded -->
+<script src="https://cdn.babylonjs.com/babylon.js" type="text/javascript"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js" type="text/javascript"></script>
+<!-- ES6 Modules -->
+<script type="module" src="content.js"></script>
+<script type="module" src="background.js"></script>
+<script type="module" src="BackgroundManager.js"></script>
+<script type="module" src="dynamicLevel.js"></script>
+
 </body>
 </html>
