@@ -29,7 +29,7 @@ export function render() {
       
      camera.position.x = player.position.x + cameraPosition;
     
-      var enableHorizontalOffset = true;  // Set this to true to enable horizontal offset
+      var enableHorizontalOffset = false;  // Set this to true to enable horizontal offset
     // Camera behavior options
     var cameraLag = 0;  // Modify this value to adjust the camera lag (0 = no lag)
     var cameraLead = 0;  // Modify this value to adjust the camera lead (0 = no lead)

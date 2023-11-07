@@ -18,7 +18,7 @@ export var engine = new BABYLON.Engine(canvas, true);
 export var createScene = function () {
     // Initialize scene here to ensure it's the same instance
     scene = new BABYLON.Scene(engine);
-    var gravityVector = new BABYLON.Vector3(0, -15, 0);
+    var gravityVector = new BABYLON.Vector3(0, -500, 0);
     var physicsPlugin = new BABYLON.CannonJSPlugin();
     scene.enablePhysics(gravityVector, physicsPlugin);
 

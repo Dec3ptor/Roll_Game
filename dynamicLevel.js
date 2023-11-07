@@ -43,7 +43,7 @@ export var createDynamicTextTexture = function (scene, text, textColor, backgrou
       textureText,
       textColor = "white",
       friction = 0.5,
-      restitution = 0.2,
+      restitution = 50,
       gap = 0, // New gap parameter
       offset = 0, // New offset parameter
     } = {}

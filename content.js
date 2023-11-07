@@ -1,4 +1,4 @@
-import { setupInputHandlers, handleInput } from './input.js';
+// import { setupInputHandlers, handleInput } from './input.js';
 // import { updateCamera, cameraPosition } from './rendering.js';
 import { scene, engine, canvas, createScene } from './scene.js';
 import { grounds, createTestGrounds } from './dynamicLevel.js';
@@ -80,11 +80,148 @@ document.getElementById('importButton').addEventListener('change', function(even
 
 
 
-  // Variables to track key states
-  var isKeyAPressed = false;
-  var isKeyDPressed = false;
-  // Add a new variable to track the "s" key state
-  var isKeySPressed = false;
+// Variables to track key states
+var isKeyAPressed;
+var isKeyDPressed;
+// Add a new variable to track the "s" key state
+var isKeySPressed;
+var playerMovementForce = 600;
+
+function setupInputHandlers() {
+    var playerSpeed = 0;
+    var keyADown = false;
+    var keyDDown;
+
+    // Define the player's speed and movement force
+    var playerSpeed = 0;
+
+    var playerDampingForce = 50;
+
+    // Remove the 'var' keyword to use the global variables instead of declaring new ones
+    isKeyAPressed = false;
+    isKeyDPressed = false;
+    isKeySPressed = false;
+
+    let lastFrameTime = performance.now();
+
+    // Initialize a variable to keep track of the previous velocity
+    let previousVelocity = null;
+    var velocityThreshold = 1;
+
+    // Jumping variables
+    let jumpForceInitial = 1; // The initial force applied when the jump starts
+    let jumpDurationMax = 0.2; // The maximum time the jump button can be held down for
+    let isJumpButtonDown = false; // Whether the jump button is currently pressed
+
+    let isOnGround = false;
+    let isJumping = false;
+    let jumpStartTime;
+    // Add a new variable to track if the jump button has been released since the last jump
+    let isJumpButtonReleased = true;
+
+    // Debug: Log the initial state of key tracking variables
+    console.log(`Initial key states: A: ${isKeyAPressed}, D: ${isKeyDPressed}, S: ${isKeySPressed}`);
+
+    // Handle keyboard events
+    scene.onKeyboardObservable.add((kbInfo) => {
+        // Debug: Log the type of keyboard event and the key involved
+        //console.log(`Keyboard Event: ${kbInfo.type}, Key: ${kbInfo.event.key}`);
+
+        switch (kbInfo.type) {
+            case BABYLON.KeyboardEventTypes.KEYDOWN:
+                // Debug: Log the state change on key down
+                console.log(`Key Down: ${kbInfo.event.key}`);
+                
+                if (kbInfo.event.key == "a" || kbInfo.event.key == "A" && isKeySPressed == false) {
+                    isKeyAPressed = true;
+                    console.log("a pressed"); // Log to console when "s" key is pressed
+                    console.log("a: ", isKeyAPressed); // Log to console when "s" key is pressed
+                    console.log("d: ", isKeyDPressed); // Log to console when "s" key is pressed
+                } else if (kbInfo.event.key == "d" || kbInfo.event.key == "D" && isKeySPressed == false) {
+                    isKeyDPressed = true;
+                    console.log("d pressed"); // Log to console when "s" key is pressed
+                    console.log("a: ", isKeyAPressed); // Log to console when "s" key is pressed
+                    console.log("d: ", isKeyDPressed); // Log to console when "s" key is pressed
+                } else if (kbInfo.event.key == " " || kbInfo.event.key == "Spacebar") {
+                    // Debug: Log jump initiation
+                    console.log(`Jump initiated: ${!isJumpButtonDown && isOnGround}`);
+                    
+                    if (!isJumpButtonDown && isOnGround) {
+                        isJumpButtonDown = true;
+                        jumpButtonPressTime = performance.now();
+                        let jumpVelocity = calculateJumpVelocity();
+                        let currentVelocity = player.physicsImpostor.getLinearVelocity();
+                        currentVelocity.y = jumpVelocity;
+                        player.physicsImpostor.setLinearVelocity(currentVelocity);
+                    }
+                }
+                else if (kbInfo.event.key == "s" || kbInfo.event.key == "S") {
+                    isKeySPressed = true;
+                    console.log("Stop / Squish action initiated"); // Log to console when "s" key is pressed
+                    // Implement additional effects here
+                }
+                break;
+
+            case BABYLON.KeyboardEventTypes.KEYUP:
+                // Debug: Log the state change on key up
+                console.log(`Key Up: ${kbInfo.event.key}`);
+                
+                if (kbInfo.event.key == "a" || kbInfo.event.key == "A") {
+                    isKeyAPressed = false;
+                } else if (kbInfo.event.key == "d" || kbInfo.event.key == "D") {
+                    isKeyDPressed = false;
+                } else if (kbInfo.event.key == " " || kbInfo.event.key == "Spacebar") {
+                    isJumpButtonDown = false;
+                    isJumpButtonReleased = true;
+                }
+                else if (kbInfo.event.key == "s" || kbInfo.event.key == "S") {
+                    isKeySPressed = false;
+                    console.log("Stop / Squish action terminated"); // Log to console when "s" key is released
+                    // Implement additional effects here
+                    playerDampingForce = 0.7;
+                }
+                break;
+        }
+    });
+}
+
+function handleInput() {
+  // console.log("a: ", isKeyAPressed); // Log to console when "s" key is pressed
+  // console.log("d: ", isKeyDPressed); // Log to console when "s" key is pressed
+
+  // Debug: Log the current velocity before applying forces
+  let currentVelocity = player.physicsImpostor.getLinearVelocity();
+  //console.log(`Current Velocity: ${currentVelocity}`);
+
+  if (isKeyAPressed) {
+    let forceVector = new BABYLON.Vector3(-playerMovementForce, 0, 0);
+    console.log(`Applying force to move left: ${forceVector}`); // Debug: Log the force vector
+    player.physicsImpostor.applyForce(forceVector, player.getAbsolutePosition());
+}
+
+  if (isKeyDPressed) {
+      console.log("Applying force to move right"); // Debug: Log right movement
+      player.physicsImpostor.applyForce(new BABYLON.Vector3(playerMovementForce, 0, 0), player.getAbsolutePosition());
+  }
+  // If the S key is pressed, apply a damping force to simulate a stop/squish action
+  if (isKeySPressed) {
+      console.log("Applying damping force due to S key press"); // Debug: Log damping force application
+      // Apply a larger damping force to quickly reduce the ball's velocity
+      player.physicsImpostor.applyForce(player.physicsImpostor.getLinearVelocity().scale(-5), player.getAbsolutePosition());
+  }
+
+  // Debug: Log the new velocity after applying forces
+  let newVelocity = player.physicsImpostor.getLinearVelocity();
+  //console.log(`New Velocity: ${newVelocity}`);
+
+  // Debug: Check if the physics impostor has mass
+  let mass = player.physicsImpostor.mass;
+  //console.log(`Player Mass: ${mass}`);
+  if (mass <= 0) {
+      console.error("The player's physics impostor has no mass or is static.");
+  }
+}
+
 
 // Initialize these variables outside of your updateGame function
 let lastFrameTime = performance.now();
@@ -122,8 +259,7 @@ function updateGame() {
     let deltaTime = (currentTime - lastFrameTime) / 1000; // Convert to seconds
     lastFrameTime = currentTime;
 
-    // Define the player's speed and movement force
-    var playerMovementForce = 20;
+
     var playerDampingForce = isKeySPressed && isOnGround ? 5 : 0.7;
 
     // Update FPS
@@ -318,4 +454,5 @@ setupInputHandlers();
 createScene();
 // Start the game loop
 gameLoop();
+
 

@@ -1,4 +1,5 @@
 import { scene } from './scene.js';
+import { player } from './createPlayer.js';
 
 // Variables to track key states
 var isKeyAPressed = false;
@@ -87,13 +88,17 @@ export function setupInputHandlers() {
 }
 
 export function handleInput() {
-
-
     // Apply continuous forces based on key states
-    if (isKeyAPressed && isKeySPressed == false) {
+    if (isKeyAPressed) {
         player.physicsImpostor.applyForce(new BABYLON.Vector3(-playerMovementForce, 0, 0), player.getAbsolutePosition());
     }
-    if (isKeyDPressed && isKeySPressed == false) {
+    if (isKeyDPressed) {
         player.physicsImpostor.applyForce(new BABYLON.Vector3(playerMovementForce, 0, 0), player.getAbsolutePosition());
     }
+    // If the S key is pressed, apply a damping force to simulate a stop/squish action
+    if (isKeySPressed) {
+        // Apply a larger damping force to quickly reduce the ball's velocity
+        player.physicsImpostor.applyForce(player.physicsImpostor.getLinearVelocity().scale(-5), player.getAbsolutePosition());
+    }
 }
+
