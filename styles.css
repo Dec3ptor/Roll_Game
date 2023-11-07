@@ -1,0 +1,19 @@
+#renderCanvas {
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+}
+#fps-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    background-color: #000;
+    color: #fff;
+    padding: 10px;
+    z-index: 1000;
+}
+
+#fps-slider {
+    width: 200px;
+}
+

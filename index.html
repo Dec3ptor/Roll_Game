@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Page Title</title>
+</head>
+<body>
+    <div id="fps-container">
+        <label for="fps-slider">FPS:</label>
+        <input type="range" min="1" max="60" value="60" id="fps-slider">
+        <div id="fps-display">60 FPS</div>
+    </div>
+
+    <canvas id="renderCanvas"></canvas>
+
+    <button id="cameraPosition1">Lock Camera Position 1</button>
+    <button id="cameraPosition2">Lock Camera Position 2</button>
+
+    <input type="file" id="importButton" style="display: none;">
+    <label for="importButton">Import Scene</label>
+
+    <!-- Scripts at the end of the body to ensure the DOM is loaded -->
+    <script src="https://cdn.babylonjs.com/babylon.js" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js" type="text/javascript"></script>
+    <script src="content.js" type="text/javascript"></script>
+</body>
+</html>
