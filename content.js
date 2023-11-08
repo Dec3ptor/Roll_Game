@@ -6,7 +6,6 @@ import { importScene, exportScene } from './importExportScene.js';
 import { player, createPlayer } from './createPlayer.js';
 import { render, camera, setCamera, cameraZoomSpeed } from './renderScene.js';
 
-
 // Define the jump variables
 var gravityForce = 15;
 
@@ -85,7 +84,8 @@ var isKeyAPressed;
 var isKeyDPressed;
 // Add a new variable to track the "s" key state
 var isKeySPressed;
-var playerMovementForce = 600;
+var playerMovementForce = 20;
+var playerDampingForce = 0.7;
 
 function setupInputHandlers() {
     var playerSpeed = 0;
@@ -94,8 +94,6 @@ function setupInputHandlers() {
 
     // Define the player's speed and movement force
     var playerSpeed = 0;
-
-    var playerDampingForce = 50;
 
     // Remove the 'var' keyword to use the global variables instead of declaring new ones
     isKeyAPressed = false;
@@ -252,6 +250,10 @@ function setupCollisionHandlers(grounds, player) {
         });
     });
 }
+var isOnGround;
+var physicsTimeStep;
+var isMoving;;
+var playerDampingForce = isKeySPressed && isOnGround ? 5 : 0.7;
 
 // The updateGame function, called every frame
 function updateGame() {
@@ -260,7 +262,6 @@ function updateGame() {
     lastFrameTime = currentTime;
 
 
-    var playerDampingForce = isKeySPressed && isOnGround ? 5 : 0.7;
 
     // Update FPS
     var fpsLabel = document.getElementById('fpsLabel'); // Make sure 'fpsLabel' is the correct ID
@@ -301,6 +302,7 @@ function updateGame() {
         isJumpButtonReleased = false; // Prevent multiple jumps without releasing the button
     }
 
+
     // Check if the player is on the ground
     checkIfOnGround(); // Implement this function to update isOnGround as needed
 
@@ -325,6 +327,8 @@ function updateGame() {
             playerDampingForce = 5;  
           }
   }
+          // Call updatePhysics with fixedTimeStep instead of deltaTime
+          updatePhysics(physicsTimeStep);
 }
 // Define the calculateJumpVelocity function outside of updateGame
 function calculateJumpVelocity() {
@@ -344,65 +348,51 @@ function calculateJumpVelocity() {
 // Call setupCollisionHandlers once during your game's initialization
 setupCollisionHandlers(grounds, player); // Make sure 'grounds' and 'player' are defined
 
-function updatePhysics(deltaTime) {
-  // Assuming 'player' is your player object with a physics impostor
-  // Apply gravity
-  const gravity = new BABYLON.Vector3(0, -9.81 * deltaTime, 0);
-  player.physicsImpostor.applyForce(gravity, player.getAbsolutePosition());
-
-  // Apply movement forces
+function updatePhysics(physicsTimeStep) {
+  // Apply movement forces if the player is moving.
   if (isMoving) {
-      const movementForce = new BABYLON.Vector3(playerMovementForce * deltaTime, 0, 0);
-      player.physicsImpostor.applyForce(movementForce, player.getAbsolutePosition());
+    const movementForce = new BABYLON.Vector3(playerMovementForce * physicsTimeStep, 0, 0);
+    player.physicsImpostor.applyForce(movementForce, player.getAbsolutePosition());
   }
 
-  // Apply damping to simulate friction
-  const damping = new BABYLON.Vector3(-player.physicsImpostor.getLinearVelocity().x * playerDampingForce * deltaTime, 0, 0);
+  // Apply damping to simulate friction.
+  const damping = new BABYLON.Vector3(-player.physicsImpostor.getLinearVelocity().x * playerDampingForce * physicsTimeStep, 0, 0);
   player.physicsImpostor.applyForce(damping, player.getAbsolutePosition());
 }
+var cameraPosition = 0;
 
 
 window.addEventListener("resize", function () {
     engine.resize();
 });
 
-var fixedTimeStep = 1 / 60; // 60 physics updates per second
-var maxSubSteps = 10; // Maximum number of physics sub-steps per frame to avoid spiral of death
-var lastFrameTimeMs = 0; // The last frame's timestamp
-var accumulator = 0; // Time accumulator for the fixed update
+engine.runRenderLoop(function () {
+    camera.position.x = player.position.x + cameraPosition;
+    scene.render();
+});
 
-function gameLoop(timestamp) {
-  if (!lastFrameTimeMs) {
-    lastFrameTimeMs = timestamp;
-  }
+var accumulator = 0; // Ensure this is initialized to 0
+console.log(`accumulator initial value: ${accumulator}`); // Should log 0
+var fixedTimeStep = 1 / 60; // Ensure this is defined before gameLoop is called
+var lastFrameTimeMs = performance.now(); // Initialize to the current time
 
-  var delta = (timestamp - lastFrameTimeMs) / 1000;
-  lastFrameTimeMs = timestamp;
-  accumulator += delta;
 
-  handleInput(); // Check for user input and handle it
-
-  var numSubSteps = 0;
-  while (accumulator >= fixedTimeStep) {
-    if (numSubSteps < maxSubSteps) {
-      updateGame(fixedTimeStep); // Update the game state with a fixed time step
-      accumulator -= fixedTimeStep;
-      numSubSteps++;
-    } else {
-      // Too many updates, we need to adjust
-      accumulator = 0; // This can lead to lost time, but avoids the spiral of death
-      break;
-    }
-  }
-
-  render(); // Draw the current state to the screen
-
-  // Request the next frame
-  requestAnimationFrame(gameLoop);
+createScene();
+// Then, to show the inspector
+if (scene) {
+  scene.debugLayer.show();
 }
+var physicsUpdates = 0;
+var physicsEngine = scene.getPhysicsEngine();
 
-// Start the game loop
-requestAnimationFrame(gameLoop);
+var lastUpdateTime = 0;
+var physicsUpdateCounter = 0;
+var lastPhysicsUpdateReset = performance.now();
+
+
+
+
+
 
 
 
@@ -411,29 +401,6 @@ requestAnimationFrame(gameLoop);
 
 
 
-
-createScene();
-
-
-if (!scene) {
-  console.error('Scene is not initialized');
-  // Handle the error, maybe initialize the scene here
-} else {
-  // Create the camera since the scene is not null
-  setCamera(new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene));
-  camera.maxZ = 5000; // Adjust the value as needed
-  camera.setTarget(BABYLON.Vector3.Zero());
-  camera.attachControl(canvas, false);
-  
-  var cameraTargetDistance = 10; // Adjust the target distance as needed
-
-  var gravityVector = new BABYLON.Vector3(0, -15, 0);
-  var physicsPlugin = new BABYLON.CannonJSPlugin();
-  scene.enablePhysics(gravityVector, physicsPlugin);
-
-  var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
-  light.intensity = 0.7;
-}
 
 
 // Restrict movement to the x and z axes
@@ -450,9 +417,32 @@ scene.registerBeforeRender(function () {
     }
 });
 
+var fixedTimeStep = 1 / 60; // 60 physics updates per second, independent of FPS
+var lastFrameTimeMs = 0; // The last frame's timestamp
+var accumulator = 0; // Time accumulator for the fixed update
+
+function gameLoop(timestamp) {
+  if (!lastFrameTimeMs) lastFrameTimeMs = timestamp;
+
+  var delta = (timestamp - lastFrameTimeMs) / 1000;
+  lastFrameTimeMs = timestamp;
+  accumulator += delta;
+
+  // Physics updates should be fixed and independent of rendering FPS
+  while (accumulator >= fixedTimeStep) {
+    updateGame(fixedTimeStep); // Update the game state with a fixed time step
+    accumulator -= fixedTimeStep;
+  }
+
+  handleInput(); // Check for user input and handle it
+  render(); // Draw the current state to the screen
+
+  requestAnimationFrame(gameLoop); // Request the next frame
+}
+
 setupInputHandlers();
-createScene();
-// Start the game loop
-gameLoop();
+requestAnimationFrame(gameLoop); // Start the game loop
+
+
 
 

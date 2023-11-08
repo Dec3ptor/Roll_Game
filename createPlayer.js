@@ -14,7 +14,7 @@ export var createPlayer = function() {
     
     // BALL CREATION
     player = BABYLON.Mesh.CreateSphere("player", 16, 2, scene);
-  player.position.y = 160;
+  player.position.y = 150;
   player.physicsImpostor = new BABYLON.PhysicsImpostor(player, BABYLON.PhysicsImpostor.SphereImpostor, { mass: 1, restitution: 0.6, friction: 0.7 }, scene);
   
   // Restrict movement to the x and z axes
