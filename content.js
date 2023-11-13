@@ -1,7 +1,7 @@
 // import { setupInputHandlers, handleInput } from './input.js';
 // import { updateCamera, cameraPosition } from './rendering.js';
-import { scene, engine, canvas, createScene } from './scene.js';
-import { grounds, createTestGrounds } from './dynamicLevel.js';
+import { scene, engine, canvas, createScene, grounds } from './scene.js';
+import { createTestGrounds } from './dynamicLevel.js';
 import { importScene, exportScene } from './importExportScene.js';
 import { player, createPlayer } from './createPlayer.js';
 import { render, camera, setCamera, cameraZoomSpeed } from './renderScene.js';
@@ -22,28 +22,39 @@ var currentSurface = null; // The surface that the ball is currently touching
 
 
 
-// Add this function to check if the ball is on a surface
 function checkIfOnGround() {
-  var origin = player.getAbsolutePosition(); // the starting point of the ray
-  var direction = new BABYLON.Vector3(0, -1, 0); // the direction of the ray
-  var length = 2; // the length of the ray
-  var ray = new BABYLON.Ray(origin, direction, length);
+  var origin = player.getAbsolutePosition();
+  var directions = [
+      new BABYLON.Vector3(0, -1, 0), // Down
+      new BABYLON.Vector3(0.5, -1, 0), // Right
+      new BABYLON.Vector3(-0.5, -1, 0), // Left
+      new BABYLON.Vector3(0.5, -0.9, 0), // Diagonal Right
+      new BABYLON.Vector3(-0.5, -0.9, 0) // Diagonal Left
+  ];
+  var length = 1.2; // Slightly longer ray
+  var onGround = false;
+  var angleThreshold = 0.6; // Adjusted angle threshold
+  var velocity = player.physicsImpostor.getLinearVelocity();
 
-  // Check if the ray intersects any meshes
-  var hit = scene.pickWithRay(ray, function(mesh){
-    return grounds.includes(mesh); // only count hits with the ground meshes
-  });
+  for (var i = 0; i < directions.length; i++) {
+      var ray = new BABYLON.Ray(origin, directions[i], length);
+      var hit = scene.pickWithRay(ray, function(mesh){
+          return grounds.includes(mesh);
+      });
 
-  if (hit.hit) {
-    // Calculate the angle between the hit surface's normal and the up vector
-    var angle = BABYLON.Vector3.Dot(hit.getNormal(true), new BABYLON.Vector3(0,1,0));
-    // If the angle is close to 1, the surface is horizontal and the ball is on the ground
-    // You can adjust the threshold as needed, 0.5 is just an example
-    isOnGround = angle > 0.7;
-  } else {
-    isOnGround = false;
+      if (hit.hit) {
+          var angle = BABYLON.Vector3.Dot(hit.getNormal(true), new BABYLON.Vector3(0,1,0));
+          if (angle > angleThreshold || Math.abs(velocity.y) < 0.1) {
+              onGround = true;
+              break;
+          }
+      }
   }
+
+  isOnGround = onGround;
 }
+
+
 
 // document.getElementById("cameraPosition1").addEventListener("click", function () {
 //     cameraPosition = -5;
@@ -87,6 +98,12 @@ var isKeySPressed;
 var playerMovementForce = 20;
 var playerDampingForce = 0.7;
 
+
+var jumpForce = 10;
+var isJumping = false;
+var jumpCooldown = 0.5; // Cooldown time in seconds after a jump
+var lastJumpTime = 0;
+let jumpStartTime;
 function setupInputHandlers() {
     var playerSpeed = 0;
     var keyADown = false;
@@ -112,8 +129,7 @@ function setupInputHandlers() {
     let isJumpButtonDown = false; // Whether the jump button is currently pressed
 
     let isOnGround = false;
-    let isJumping = false;
-    let jumpStartTime;
+
     // Add a new variable to track if the jump button has been released since the last jump
     let isJumpButtonReleased = true;
 
@@ -131,27 +147,29 @@ function setupInputHandlers() {
                 console.log(`Key Down: ${kbInfo.event.key}`);
                 
                 if (kbInfo.event.key == "a" || kbInfo.event.key == "A" && isKeySPressed == false) {
-                    isKeyAPressed = true;
-                    console.log("a pressed"); // Log to console when "s" key is pressed
+                  handleKeyDown(kbInfo.event.key);
+                  console.log("a pressed"); // Log to console when "s" key is pressed
                     console.log("a: ", isKeyAPressed); // Log to console when "s" key is pressed
                     console.log("d: ", isKeyDPressed); // Log to console when "s" key is pressed
                 } else if (kbInfo.event.key == "d" || kbInfo.event.key == "D" && isKeySPressed == false) {
-                    isKeyDPressed = true;
                     console.log("d pressed"); // Log to console when "s" key is pressed
                     console.log("a: ", isKeyAPressed); // Log to console when "s" key is pressed
                     console.log("d: ", isKeyDPressed); // Log to console when "s" key is pressed
+                    handleKeyDown(kbInfo.event.key);
+
                 } else if (kbInfo.event.key == " " || kbInfo.event.key == "Spacebar") {
                     // Debug: Log jump initiation
                     console.log(`Jump initiated: ${!isJumpButtonDown && isOnGround}`);
-                    
-                    if (!isJumpButtonDown && isOnGround) {
-                        isJumpButtonDown = true;
-                        jumpButtonPressTime = performance.now();
-                        let jumpVelocity = calculateJumpVelocity();
-                        let currentVelocity = player.physicsImpostor.getLinearVelocity();
-                        currentVelocity.y = jumpVelocity;
-                        player.physicsImpostor.setLinearVelocity(currentVelocity);
-                    }
+
+                    // if (!isJumpButtonDown && isOnGround) {
+                    //     isJumpButtonDown = true;
+                    //     jumpButtonPressTime = performance.now();
+                    //     let jumpVelocity = calculateJumpVelocity();
+                    //     let currentVelocity = player.physicsImpostor.getLinearVelocity();
+                    //     currentVelocity.y = jumpVelocity;
+                    //     player.physicsImpostor.setLinearVelocity(currentVelocity);
+                    // }
+                    handleKeyDown(kbInfo.event.key);
                 }
                 else if (kbInfo.event.key == "s" || kbInfo.event.key == "S") {
                     isKeySPressed = true;
@@ -165,12 +183,14 @@ function setupInputHandlers() {
                 console.log(`Key Up: ${kbInfo.event.key}`);
                 
                 if (kbInfo.event.key == "a" || kbInfo.event.key == "A") {
-                    isKeyAPressed = false;
+                  handleKeyUp(kbInfo.event.key);
                 } else if (kbInfo.event.key == "d" || kbInfo.event.key == "D") {
-                    isKeyDPressed = false;
+                    handleKeyUp(kbInfo.event.key);
+
                 } else if (kbInfo.event.key == " " || kbInfo.event.key == "Spacebar") {
-                    isJumpButtonDown = false;
-                    isJumpButtonReleased = true;
+
+                    handleKeyUp(kbInfo.event.key);
+
                 }
                 else if (kbInfo.event.key == "s" || kbInfo.event.key == "S") {
                     isKeySPressed = false;
@@ -202,15 +222,15 @@ function handleInput() {
       player.physicsImpostor.applyForce(new BABYLON.Vector3(playerMovementForce, 0, 0), player.getAbsolutePosition());
   }
   // If the S key is pressed, apply a damping force to simulate a stop/squish action
-  if (isKeySPressed) {
+  if (isKeySPressed == true && isOnGround == true) {
       console.log("Applying damping force due to S key press"); // Debug: Log damping force application
       // Apply a larger damping force to quickly reduce the ball's velocity
-      player.physicsImpostor.applyForce(player.physicsImpostor.getLinearVelocity().scale(-5), player.getAbsolutePosition());
+      player.physicsImpostor.applyForce(player.physicsImpostor.getLinearVelocity().scale(-20), player.getAbsolutePosition());
   }
 
   // Debug: Log the new velocity after applying forces
   let newVelocity = player.physicsImpostor.getLinearVelocity();
-  //console.log(`New Velocity: ${newVelocity}`);
+  //console.log(`New Velocity: ${newVelocity}`);  
 
   // Debug: Check if the physics impostor has mass
   let mass = player.physicsImpostor.mass;
@@ -219,7 +239,104 @@ function handleInput() {
       console.error("The player's physics impostor has no mass or is static.");
   }
 }
+function handleKeyDown(key) {
+  // Handle key down events
+  if (key === "a" || key === "A") {
+      isKeyAPressed = true;
+  } else if (key === "d" || key === "D") {
+      isKeyDPressed = true;
+  } else if (key === " " && !isJumping && performance.now() - lastJumpTime > jumpCooldown * 1000) {
+      //isJumping = true;
+      lastJumpTime = performance.now();
+      performJump();
+  } else if (key === "s" || key === "S") {
+      isKeySPressed = true;
 
+      // Additional effects for S key...
+  }
+}
+function handleKeyUp(key) {
+  // Handle key up events
+  if (key === "a" || key === "A") {
+      isKeyAPressed = false;
+  } else if (key === "d" || key === "D") {
+      isKeyDPressed = false;
+  } else if (key === " ") {
+      isJumping = false;
+  } else if (key === "s" || key === "S") {
+      isKeySPressed = false;
+      // Additional effects for releasing S key...
+  }
+}
+function performJump() {
+  if (isJumping == true || isOnGround == false)
+  {
+    return;
+  }
+
+  isJumping = true;
+  let jumpVector = new BABYLON.Vector3(0, jumpForce, 0);
+  player.physicsImpostor.applyImpulse(jumpVector, player.getAbsolutePosition());
+  
+  // compressBall(() => {
+  //     // After compression, apply the jump force
+  //     let jumpVector = new BABYLON.Vector3(0, jumpForce, 0);
+  //     player.physicsImpostor.applyImpulse(jumpVector, player.getAbsolutePosition());
+
+  //     // Decompress the ball
+  //     decompressBall();
+
+  //     // Reset the jumping flag after a delay
+  //     setTimeout(() => {
+  //         isJumping = false;
+  //     }, jumpCooldown * 1000);
+  // });
+}
+// function compressBall(onComplete) {
+//   // Create an animation to compress the ball
+//   var compressAnimation = new BABYLON.Animation("compress", "scaling", 30, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
+
+//   var keyFrames = []; 
+//   keyFrames.push({
+//       frame: 0,
+//       value: new BABYLON.Vector3(1, 1, 1)
+//   });
+//   keyFrames.push({
+//       frame: 15,
+//       value: new BABYLON.Vector3(1, 0.6, 1) // Adjust the compression scale as needed
+//   });
+
+//   compressAnimation.setKeys(keyFrames);
+
+//   player.animations = [];
+//   player.animations.push(compressAnimation);
+
+//   scene.beginAnimation(player, 0, 15, false, 1, () => {
+//       if (onComplete) onComplete();
+//   });
+// }
+
+// function decompressBall() {
+//   // Create an animation to decompress the ball
+//   var decompressAnimation = new BABYLON.Animation("decompress", "scaling", 30, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
+
+//   var keyFrames = []; 
+//   keyFrames.push({
+//       frame: 0,
+//       value: new BABYLON.Vector3(1, 0.6, 1) // The compressed scale
+//   });
+//   keyFrames.push({
+//       frame: 15,
+//       value: new BABYLON.Vector3(1, 1, 1)
+//   });
+
+//   decompressAnimation.setKeys(keyFrames);
+
+//   player.animations = [];
+//   player.animations.push(decompressAnimation);
+
+//   scene.beginAnimation(player, 0, 15, false);
+// }
 
 // Initialize these variables outside of your updateGame function
 let lastFrameTime = performance.now();

@@ -7,7 +7,7 @@ import { camera, setCamera } from './renderScene.js';
 // Declare scene variable but don't assign it yet
 export var scene;// Get the canvas DOM element
 export var canvas = document.getElementById("renderCanvas");
-
+export var grounds = [];
 
 // Initialize the BABYLON 3D engine
 export var engine = new BABYLON.Engine(canvas, true);
@@ -27,15 +27,15 @@ export var createScene = function () {
     loadBackgrounds();
     loadGrounds();
 
-// Instead of reassigning camera, initialize it if it's null
-if (!camera) {
-setCamera(new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene));
-    camera.maxZ = 5000; // Adjust the value as needed
-    camera.setTarget(BABYLON.Vector3.Zero());
-    camera.attachControl(canvas, false);
+    // Instead of reassigning camera, initialize it if it's null
+    if (!camera) {
+        setCamera(new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene));
+        camera.maxZ = 5000; // Adjust the value as needed
+        camera.setTarget(BABYLON.Vector3.Zero());
+        camera.attachControl(canvas, false);
 
-    var cameraTargetDistance = 10; // Adjust the target distance as needed
-}
+        var cameraTargetDistance = 10; // Adjust the target distance as needed
+    }
 
     var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
     light.intensity = 0.7;
@@ -78,10 +78,11 @@ export function loadBackgrounds() {
     // Add backgrounds 
     backgroundManager.addBackground(20, 80, 40);
     backgroundManager.addBackground(15, 30, 30);
-    backgroundManager.addBackground(10, 10, 10);}
+    backgroundManager.addBackground(10, 10, 10);
+}
 
 export function loadGrounds() {
-   // Usage example:
+    // Usage example:
     //var ground1 = createSurface(scene, BABYLON.Vector3.Zero(), 20, 0, true);
     //var ground2 = createSurface(scene, new BABYLON.Vector3(20, -Math.tan(Math.PI / 12) * 20, 0), 20, Math.PI / 12, true);
 
@@ -103,6 +104,9 @@ export function loadGrounds() {
         restitution: 0.2,
         gap: 0,
     });
+
+    console.log("Base ground created:", grounds);
+
 
     // Create tower levels
     var levels = 100; // More levels to reach
@@ -142,8 +146,11 @@ export function loadGrounds() {
             restitution: 0.2,
             gap: 0,
         });
+        console.log("Ground at level " + (i + 1) + ":", newGrounds);
 
         grounds = grounds.concat(newGrounds);
-}
+
+    }
+    console.log("All grounds:", grounds);
 
 }

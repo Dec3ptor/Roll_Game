@@ -1,4 +1,4 @@
-export var grounds = [];
+import { grounds } from './scene.js';
 
 export var createDynamicTextTexture = function (scene, text, textColor, backgroundColor) {
     var texture = new BABYLON.DynamicTexture("textTexture", 512, scene, true);
@@ -48,7 +48,6 @@ export var createDynamicTextTexture = function (scene, text, textColor, backgrou
       offset = 0, // New offset parameter
     } = {}
   ) {
-    grounds = [];
     var previousHeight = 0; // initial height
     var totalSizeSoFar = offset; // total size of all grounds created so far, start from offset if provided
   
