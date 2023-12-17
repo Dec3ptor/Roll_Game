@@ -9,7 +9,8 @@ import { render, camera, setCamera, cameraZoomSpeed } from './renderScene.js';
 // Define the jump variables
 var gravityForce = 15;
 
-
+// Global variable to track the size state of the player
+var isPlayerBig = false;
 
 let spacePressed = false;
 // Global variable to keep track of the time the space key is pressed
@@ -19,40 +20,43 @@ var spaceKeyDownTime = null;
 var jumpFromSurfaceOnly = true; // Set to true if the ball needs to be on a surface to jump
 var currentSurface = null; // The surface that the ball is currently touching
 
-
+// Define the minimum and maximum zoom distances
+var minZoomDistance = 5;  // Modify this value to set the minimum zoom distance
+var maxZoomDistance = 10;  // Modify this value to set the maximum zoom distance
 
 
 function checkIfOnGround() {
-  var origin = player.getAbsolutePosition();
-  var directions = [
-      new BABYLON.Vector3(0, -1, 0), // Down
-      new BABYLON.Vector3(0.5, -1, 0), // Right
-      new BABYLON.Vector3(-0.5, -1, 0), // Left
-      new BABYLON.Vector3(0.5, -0.9, 0), // Diagonal Right
-      new BABYLON.Vector3(-0.5, -0.9, 0) // Diagonal Left
-  ];
-  var length = 1.2; // Slightly longer ray
-  var onGround = false;
-  var angleThreshold = 0.6; // Adjusted angle threshold
-  var velocity = player.physicsImpostor.getLinearVelocity();
+    var playerRadius = player.scaling.y; // Assuming uniform scaling
+    var origin = player.getAbsolutePosition().subtract(new BABYLON.Vector3(0, playerRadius - 0.01, 0)); // Start just inside the sphere's surface
+    var directions = [
+        new BABYLON.Vector3(0, -1, 0), // Down
+        new BABYLON.Vector3(playerRadius * 0.5, -1, 0), // Right
+        new BABYLON.Vector3(-playerRadius * 0.5, -1, 0), // Left
+        new BABYLON.Vector3(playerRadius * 0.5, -0.9, 0), // Diagonal Right
+        new BABYLON.Vector3(-playerRadius * 0.5, -0.9, 0) // Diagonal Left
+    ];
+    var length = 0.4; // Small length, just enough to detect the ground
+    var onGround = false;
+    var angleThreshold = 0.6; // Angle threshold
 
-  for (var i = 0; i < directions.length; i++) {
-      var ray = new BABYLON.Ray(origin, directions[i], length);
-      var hit = scene.pickWithRay(ray, function(mesh){
-          return grounds.includes(mesh);
-      });
+    for (var i = 0; i < directions.length; i++) {
+        var ray = new BABYLON.Ray(origin, directions[i], length);
+        var hit = scene.pickWithRay(ray, function(mesh){
+            return grounds.includes(mesh);
+        });
 
-      if (hit.hit) {
-          var angle = BABYLON.Vector3.Dot(hit.getNormal(true), new BABYLON.Vector3(0,1,0));
-          if (angle > angleThreshold || Math.abs(velocity.y) < 0.1) {
-              onGround = true;
-              break;
-          }
-      }
-  }
+        if (hit.hit) {
+            var angle = BABYLON.Vector3.Dot(hit.getNormal(true), new BABYLON.Vector3(0,1,0));
+            if (angle > angleThreshold) {
+                onGround = true;
+                break;
+            }
+        }
+    }
 
-  isOnGround = onGround;
+    isOnGround = onGround;
 }
+
 
 
 
@@ -95,13 +99,14 @@ var isKeyAPressed;
 var isKeyDPressed;
 // Add a new variable to track the "s" key state
 var isKeySPressed;
+var isKeyShiftPressed;
 var playerMovementForce = 20;
 var playerDampingForce = 0.7;
 
 
 var jumpForce = 10;
 var isJumping = false;
-var jumpCooldown = 0.5; // Cooldown time in seconds after a jump
+var jumpCooldown = 0; // Cooldown time in seconds after a jump
 var lastJumpTime = 0;
 let jumpStartTime;
 function setupInputHandlers() {
@@ -116,7 +121,7 @@ function setupInputHandlers() {
     isKeyAPressed = false;
     isKeyDPressed = false;
     isKeySPressed = false;
-
+    isKeyShiftPressed = false;
     let lastFrameTime = performance.now();
 
     // Initialize a variable to keep track of the previous velocity
@@ -176,6 +181,14 @@ function setupInputHandlers() {
                     console.log("Stop / Squish action initiated"); // Log to console when "s" key is pressed
                     // Implement additional effects here
                 }
+                else if (kbInfo.event.key == "Shift")
+                {
+                    isKeyShiftPressed = true;
+                    handleKeyDown(kbInfo.event.key);
+
+                    console.log("Shify key hit"); 
+
+                }
                 break;
 
             case BABYLON.KeyboardEventTypes.KEYUP:
@@ -198,29 +211,40 @@ function setupInputHandlers() {
                     // Implement additional effects here
                     playerDampingForce = 0.7;
                 }
+                else if (kbInfo.event.key == "s" || kbInfo.event.key == "S") {
+                    isKeyShiftPressed = false;
+                    handleKeyUp(kbInfo.event.key);
+
+                }
                 break;
         }
     });
 }
 
 function handleInput() {
-  // console.log("a: ", isKeyAPressed); // Log to console when "s" key is pressed
-  // console.log("d: ", isKeyDPressed); // Log to console when "s" key is pressed
+    let currentVelocity = player.physicsImpostor.getLinearVelocity();
+    let spinSpeed = 0.1;
 
-  // Debug: Log the current velocity before applying forces
-  let currentVelocity = player.physicsImpostor.getLinearVelocity();
-  //console.log(`Current Velocity: ${currentVelocity}`);
+    // Adjust playerMovementForce based on player's size
+    let sizeFactor = player.scaling.x; // Assuming uniform scaling
+    let scaledMovementForce = playerMovementForce * sizeFactor;
 
-  if (isKeyAPressed) {
-    let forceVector = new BABYLON.Vector3(-playerMovementForce, 0, 0);
-    console.log(`Applying force to move left: ${forceVector}`); // Debug: Log the force vector
-    player.physicsImpostor.applyForce(forceVector, player.getAbsolutePosition());
-}
+    if (isKeyAPressed) {
+        let forceVector = new BABYLON.Vector3(-scaledMovementForce, 0, 0);
+        player.physicsImpostor.applyForce(forceVector, player.getAbsolutePosition());
 
-  if (isKeyDPressed) {
-      console.log("Applying force to move right"); // Debug: Log right movement
-      player.physicsImpostor.applyForce(new BABYLON.Vector3(playerMovementForce, 0, 0), player.getAbsolutePosition());
-  }
+        let currentAngularVelocity = player.physicsImpostor.getAngularVelocity();
+        currentAngularVelocity.z += spinSpeed;
+        player.physicsImpostor.setAngularVelocity(currentAngularVelocity);
+    }
+
+    if (isKeyDPressed) {
+        player.physicsImpostor.applyForce(new BABYLON.Vector3(scaledMovementForce, 0, 0), player.getAbsolutePosition());
+
+        let currentAngularVelocity = player.physicsImpostor.getAngularVelocity();
+        currentAngularVelocity.z -= spinSpeed;
+        player.physicsImpostor.setAngularVelocity(currentAngularVelocity);
+    }
   // If the S key is pressed, apply a damping force to simulate a stop/squish action
   if (isKeySPressed == true && isOnGround == true) {
       console.log("Applying damping force due to S key press"); // Debug: Log damping force application
@@ -228,6 +252,18 @@ function handleInput() {
       player.physicsImpostor.applyForce(player.physicsImpostor.getLinearVelocity().scale(-20), player.getAbsolutePosition());
   }
 
+
+
+
+
+// Example usage
+if (isKeyShiftPressed) {
+    togglePlayerSize();
+}
+
+
+
+    
   // Debug: Log the new velocity after applying forces
   let newVelocity = player.physicsImpostor.getLinearVelocity();
   //console.log(`New Velocity: ${newVelocity}`);  
@@ -239,6 +275,54 @@ function handleInput() {
       console.error("The player's physics impostor has no mass or is static.");
   }
 }
+
+function togglePlayerSize() {
+    // Store the current linear and angular velocities
+    var currentLinearVelocity = player.physicsImpostor.getLinearVelocity();
+    var currentAngularVelocity = player.physicsImpostor.getAngularVelocity();
+
+    // Calculate the change in radius based on scaling
+    var originalRadius = player.scaling.y / 2;
+    var newRadius = 2.5;
+
+    // Toggle the size of the           
+    if (!isPlayerBig) {
+        player.position.y += newRadius - originalRadius;
+        // Increase the size
+        player.scaling = new BABYLON.Vector3(3, 3, 3);
+        isPlayerBig = true;
+        jumpForce = 15;
+        minZoomDistance = 40;  // Modify this value to set the minimum zoom distance
+        maxZoomDistance = 60;  // Modify this value to set the maximum zoom distance
+    } else {
+        // Reset to normal size
+        player.scaling = new BABYLON.Vector3(1, 1, 1);
+        isPlayerBig = false;
+        jumpForce = 10;
+        minZoomDistance = 5;  // Modify this value to set the minimum zoom distance
+        maxZoomDistance = 10;  // Modify this value to set the maximum zoom distance
+    }
+
+
+    // Dispose of the existing physics impostor
+    if (player.physicsImpostor) {
+        player.physicsImpostor.dispose();
+    }
+
+    // Adjust the mass based on the size
+    var newMass = isPlayerBig ? 1 : 1; // Adjust the mass as needed
+
+    // Create a new physics impostor to match the new size
+    player.physicsImpostor = new BABYLON.PhysicsImpostor(player, BABYLON.PhysicsImpostor.SphereImpostor, { mass: newMass, restitution: 0.6, friction: 0.7 }, scene);
+
+    // Reapply the saved velocities
+    player.physicsImpostor.setLinearVelocity(currentLinearVelocity);
+    player.physicsImpostor.setAngularVelocity(currentAngularVelocity);
+    isKeyShiftPressed = false;
+}
+
+
+
 function handleKeyDown(key) {
   // Handle key down events
   if (key === "a" || key === "A") {
@@ -248,10 +332,12 @@ function handleKeyDown(key) {
   } else if (key === " " && !isJumping && performance.now() - lastJumpTime > jumpCooldown * 1000) {
       //isJumping = true;
       lastJumpTime = performance.now();
-      performJump();
+      performJump(jumpForce);
+  } else if (key === "Shift") {
+    isKeyShiftPressed = true;
+
   } else if (key === "s" || key === "S") {
       isKeySPressed = true;
-
       // Additional effects for S key...
   }
 }
@@ -263,35 +349,36 @@ function handleKeyUp(key) {
       isKeyDPressed = false;
   } else if (key === " ") {
       isJumping = false;
+    } else if (key === "Shift") {
+        isKeyShiftPressed = false;
   } else if (key === "s" || key === "S") {
       isKeySPressed = false;
       // Additional effects for releasing S key...
   }
 }
-function performJump() {
-  if (isJumping == true || isOnGround == false)
-  {
-    return;
+function performJump(force) {
+  // Only allow jumping if the player is on the ground and not currently jumping
+  if (!isOnGround || isJumping) {
+      return;
   }
 
-  isJumping = true;
-  let jumpVector = new BABYLON.Vector3(0, jumpForce, 0);
+  // Reset vertical velocity
+  let currentVelocity = player.physicsImpostor.getLinearVelocity();
+  currentVelocity.y = 0;
+  player.physicsImpostor.setLinearVelocity(currentVelocity);
+
+  // Apply a consistent jump force
+  let jumpVector = new BABYLON.Vector3(0, force, 0);
   player.physicsImpostor.applyImpulse(jumpVector, player.getAbsolutePosition());
-  
-  // compressBall(() => {
-  //     // After compression, apply the jump force
-  //     let jumpVector = new BABYLON.Vector3(0, jumpForce, 0);
-  //     player.physicsImpostor.applyImpulse(jumpVector, player.getAbsolutePosition());
 
-  //     // Decompress the ball
-  //     decompressBall();
-
-  //     // Reset the jumping flag after a delay
-  //     setTimeout(() => {
-  //         isJumping = false;
-  //     }, jumpCooldown * 1000);
-  // });
+  // Set isJumping to true to prevent immediate re-jumping
+  isJumping = true;
+  // Set a timeout to reset isJumping after a short delay
+  setTimeout(() => {
+      isJumping = false;
+  }, jumpCooldown * 1000);
 }
+
 // function compressBall(onComplete) {
 //   // Create an animation to compress the ball
 //   var compressAnimation = new BABYLON.Animation("compress", "scaling", 30, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
@@ -530,9 +617,7 @@ var previousCameraTarget = camera.getFrontPosition(1);
 // Initialize the previous lag and lead
 var previousCameraLag = 0;
 var previousCameraLead = 0;
-// Define the minimum and maximum zoom distances
-var minZoomDistance = 5;  // Modify this value to set the minimum zoom distance
-var maxZoomDistance = 10;  // Modify this value to set the maximum zoom distance
+
 
 // Define a speed factor. This determines how much the ball's speed affects the zoom.
 var speedFactor = 0.1;  // Modify this value to adjust the speed factor

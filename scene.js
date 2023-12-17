@@ -101,7 +101,7 @@ export function loadGrounds() {
         textureText: "Ground",
         textColor: "white",
         friction: 0.5,
-        restitution: 0.2,
+        restitution: 0.5,
         gap: 0,
     });
 
@@ -110,9 +110,9 @@ export function loadGrounds() {
 
     // Create tower levels
     var levels = 100; // More levels to reach
-    var levelHeight = 1; // Smaller vertical distance between levels
+    var levelHeight = 0.5; // Smaller vertical distance between levels
     var sizeRange = [2, 8]; // Smaller sizes
-    var xOffsetRange = [-20, 30]; // Greater range in the x-axis
+    var xOffsetRange = [-20, 150]; // Greater range in the x-axis
     var yOffsetRange = [1, 5]; // Gaps within 0 - 5
     var angleRange = [-60, 60];
     var types = ["rectangle", "sphere", "round"];
@@ -143,7 +143,7 @@ export function loadGrounds() {
             textureText: "Ground",
             textColor: "white",
             friction: 0.5,
-            restitution: 0.2,
+            restitution: 0.5,
             gap: 0,
         });
         console.log("Ground at level " + (i + 1) + ":", newGrounds);
