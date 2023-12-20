@@ -1,8 +1,9 @@
-import { createPlayer } from './createPlayer.js';
+import { createPlayer} from './createPlayer.js';
 import { BackgroundManager } from './backgroundManager.js';
-import { createTestGrounds } from './dynamicLevel.js';
+import { createTestGrounds, createGlowingBall } from './dynamicLevel.js';
 // scene.js
 import { camera, setCamera } from './renderScene.js';
+// Import required modules
 
 // Declare scene variable but don't assign it yet
 export var scene;// Get the canvas DOM element
@@ -69,6 +70,7 @@ export var createScene = function () {
 
     //         // Set up physics impostor for the incline
     //         inclineMesh.physicsImpostor = new BABYLON.PhysicsImpostor(inclineMesh, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
+    
     return scene;
 };
 // Export functions to load backgrounds and grounds but don't execute them yet
@@ -108,34 +110,92 @@ export function loadGrounds() {
     console.log("Base ground created:", grounds);
 
 
-    // Create tower levels
-    var levels = 100; // More levels to reach
-    var levelHeight = 0.5; // Smaller vertical distance between levels
-    var sizeRange = [2, 8]; // Smaller sizes
-    var xOffsetRange = [-20, 150]; // Greater range in the x-axis
-    var yOffsetRange = [1, 5]; // Gaps within 0 - 5
-    var angleRange = [-60, 60];
-    var types = ["rectangle", "sphere", "round"];
+    // // Create tower levels
+    // var levels = 100; // More levels to reach
+    // var levelHeight = 0.2; // Smaller vertical distance between levels
+    // var sizeRange = [2, 8]; // Smaller sizes
+    // var xOffsetRange = [-20, 150]; // Greater range in the x-axis
+    // var yOffsetRange = [1, 5]; // Gaps within 0 - 5
+    // var angleRange = [-60, 60];
+    // var types = ["rectangle", "sphere", "round"];
+
+    // for (var i = 0; i < levels; i++) {
+    //     // Random x-offset for each level
+    //     var xOffset = Math.random() * (xOffsetRange[1] - xOffsetRange[0]) + xOffsetRange[0];
+
+    //     // Random y-offset for each level
+    //     var yOffset = Math.random() * (yOffsetRange[1] - yOffsetRange[0]) + yOffsetRange[0];
+
+    //     // Random size for each level
+    //     var size = Math.random() * (sizeRange[1] - sizeRange[0]) + sizeRange[0];
+
+    //     // Random type for each level
+    //     var type = types[Math.floor(Math.random() * types.length)];
+
+    //     // Steep angles for each level
+    //     var angle = Math.random() * (angleRange[1] - angleRange[0]) + angleRange[0];
+
+    //     // Create the next level
+    //     var newGrounds = createTestGrounds(scene, 1, [size, size], [angle, angle], 0, [0, 0], {
+    //         position: { x: xOffset, y: levelHeight * (i + 1) + yOffset, z: 0 }, // Position the level upwards in the y-axis
+    //         size: size,
+    //         thickness: 2,
+    //         type: type,
+    //         textureColor: "#00FF00",
+    //         textureText: "Ground",
+    //         textColor: "white",
+    //         friction: 0.5,
+    //         restitution: 0.5,
+    //         gap: 0,
+    //     });
+    //     console.log("Ground at level " + (i + 1) + ":", newGrounds);
+
+    //     grounds = grounds.concat(newGrounds);
+
+    //     // Determine the position for the glowing ball
+    //     // Assuming you want to place the ball above the center of the ground
+    //     var ballPositionX = xOffset;
+    //     var ballPositionY = levelHeight * (i + 1) + yOffset + 1; // 1 unit above the ground
+    //     var ballPositionZ = 0; // Assuming Z-axis is constant
+    //     var ballPosition = new BABYLON.Vector3(ballPositionX, ballPositionY, ballPositionZ);
+    
+    //     // Create and place the glowing ball
+    //     createGlowingBall(scene, ballPosition);
+    
+    //     levelHeight += 0.01;
+    // }
+    // console.log("All grounds:", grounds);
+
+
+
+    var levels = 100;
+    var ballFrequency = 1;
+    var xOffset = 0; // Starting x-offset
+    var yOffset = 0; // Starting y-offset
+    var levelWidth = 5; // Width of each level
+    var levelHeight = 2; // Height of each level
+    var hillHeight = 600; // Maximum height of hills
+    var hillStep = 1; // Height increment for each step of the hill
 
     for (var i = 0; i < levels; i++) {
-        // Random x-offset for each level
-        var xOffset = Math.random() * (xOffsetRange[1] - xOffsetRange[0]) + xOffsetRange[0];
+        var size = levelWidth; // Uniform size for each level
+        var type = "rectangle"; // Use rectangles for flat levels
+        var height = yOffset;
 
-        // Random y-offset for each level
-        var yOffset = Math.random() * (yOffsetRange[1] - yOffsetRange[0]) + yOffsetRange[0];
+        // Logic to create hills/steps
+        if (i % 10 < 5) {
+            // Going up
+            height += hillStep;
+            if (height > hillHeight) height = hillHeight;
+        } else {
+            // Going down
+            height -= hillStep;
+            if (height < 0) height = 0;
+        }
 
-        // Random size for each level
-        var size = Math.random() * (sizeRange[1] - sizeRange[0]) + sizeRange[0];
-
-        // Random type for each level
-        var type = types[Math.floor(Math.random() * types.length)];
-
-        // Steep angles for each level
-        var angle = Math.random() * (angleRange[1] - angleRange[0]) + angleRange[0];
-
-        // Create the next level
-        var newGrounds = createTestGrounds(scene, 1, [size, size], [angle, angle], 0, [0, 0], {
-            position: { x: xOffset, y: levelHeight * (i + 1) + yOffset, z: 0 }, // Position the level upwards in the y-axis
+        // Create the level
+        var newGround = createTestGrounds(scene, 1, [size, size], [0, 0], 0, [height, height], {
+            position: { x: xOffset, y: height, z: 0 },
             size: size,
             thickness: 2,
             type: type,
@@ -146,11 +206,73 @@ export function loadGrounds() {
             restitution: 0.5,
             gap: 0,
         });
-        console.log("Ground at level " + (i + 1) + ":", newGrounds);
 
-        grounds = grounds.concat(newGrounds);
+        grounds.push(newGround);
 
+        // Place a glowing ball on every 5th ground
+        if (i % ballFrequency === 0) {
+            var ballPosition = new BABYLON.Vector3(xOffset, height + 1, 0); // 1 unit above the ground
+            createGlowingBall(scene, ballPosition, i);
+        }
+
+        xOffset += levelWidth; // Move to the next level position
     }
-    console.log("All grounds:", grounds);
+
+    console.log("All structured grounds and balls created:", grounds);
 
 }
+
+
+
+
+// export function loadGrounds(scene) {
+//     // Create the base ground
+//     var baseGround = createTestGrounds(scene, 1, [35, 35], [0, 0], 0, [0, 0], {
+//         position: { x: 0, y: 0, z: 0 },
+//         size: 10,
+//         thickness: 2,
+//         type: "rectangle",
+//         textureColor: "#FF0000",
+//         textureText: "Base",
+//         textColor: "white",
+//         friction: 0.5,
+//         restitution: 0.5,
+//         gap: 0
+//     });
+
+//     console.log("Base ground created:", baseGround);
+
+//     // Parameters for skatepark elements
+//     var skateElements = 50;
+//     var sizeRange = [5, 15];
+//     var xOffsetRange = [-20, 60];
+//     var yOffsetRange = [0, 50];
+//     var angleRange = [-45, 45];
+//     var types = ["rectangle", "round", "ramp"];  // Including bowl shape
+
+//     for (var i = 0; i < skateElements; i++) {
+//         var xOffset = Math.random() * (xOffsetRange[1] - xOffsetRange[0]) + xOffsetRange[0];
+//         var yOffset = Math.random() * (yOffsetRange[1] - yOffsetRange[0]) + yOffsetRange[0];
+//         var size = Math.random() * (sizeRange[1] - sizeRange[0]) + sizeRange[0];
+//         var angle = Math.random() * (angleRange[1] - angleRange[0]) + angleRange[0];
+//         var type = types[Math.floor(Math.random() * types.length)];
+
+//         // Create skatepark elements
+//         var skateGround = createTestGrounds(scene, 1, [size, size], [angle, angle], 0, [yOffset, yOffset], {
+//             position: { x: xOffset, y: yOffset, z: 0 },
+//             size: size,
+//             thickness: 2,
+//             type: type,
+//             textureColor: "#00FF00",
+//             textureText: type.charAt(0).toUpperCase() + type.slice(1),
+//             textColor: "white",
+//             friction: 0.5,
+//             restitution: 0.5,
+//             gap: 0
+//         });
+
+//         console.log("Skatepark element created:", skateGround);
+//     }
+
+//     console.log("All grounds:", grounds);
+// }

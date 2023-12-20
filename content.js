@@ -102,7 +102,7 @@ var isKeySPressed;
 var isKeyShiftPressed;
 var playerMovementForce = 20;
 var playerDampingForce = 0.7;
-
+var isKeyQPressed;
 
 var jumpForce = 10;
 var isJumping = false;
@@ -121,6 +121,7 @@ function setupInputHandlers() {
     isKeyAPressed = false;
     isKeyDPressed = false;
     isKeySPressed = false;
+    isKeyQPressed = false;
     isKeyShiftPressed = false;
     let lastFrameTime = performance.now();
 
@@ -185,8 +186,14 @@ function setupInputHandlers() {
                 {
                     isKeyShiftPressed = true;
                     handleKeyDown(kbInfo.event.key);
-
                     console.log("Shify key hit"); 
+
+                }
+                else if (kbInfo.event.key == "q" || kbInfo.event.key == "Q")
+                {
+                    isKeyQPressed = true;
+                    handleKeyDown(kbInfo.event.key);
+                    console.log("E key hit"); 
 
                 }
                 break;
@@ -211,7 +218,12 @@ function setupInputHandlers() {
                     // Implement additional effects here
                     playerDampingForce = 0.7;
                 }
-                else if (kbInfo.event.key == "s" || kbInfo.event.key == "S") {
+                else if (kbInfo.event.key == "q" || kbInfo.event.key == "Q") {
+                    isKeyQPressed = false;
+                    // Implement additional effects here
+                }
+                else if (kbInfo.event.key == "Shift")
+                {
                     isKeyShiftPressed = false;
                     handleKeyUp(kbInfo.event.key);
 
@@ -245,21 +257,22 @@ function handleInput() {
         currentAngularVelocity.z -= spinSpeed;
         player.physicsImpostor.setAngularVelocity(currentAngularVelocity);
     }
-  // If the S key is pressed, apply a damping force to simulate a stop/squish action
-  if (isKeySPressed == true && isOnGround == true) {
-      console.log("Applying damping force due to S key press"); // Debug: Log damping force application
-      // Apply a larger damping force to quickly reduce the ball's velocity
-      player.physicsImpostor.applyForce(player.physicsImpostor.getLinearVelocity().scale(-20), player.getAbsolutePosition());
-  }
-
-
-
-
-
-// Example usage
-if (isKeyShiftPressed) {
-    togglePlayerSize();
-}
+    // If the S key is pressed, apply a damping force to simulate a stop/squish action
+    if (isKeySPressed == true && isOnGround == true) {
+        console.log("Applying damping force due to S key press"); // Debug: Log damping force application
+        // Apply a larger damping force to quickly reduce the ball's velocity
+        player.physicsImpostor.applyForce(player.physicsImpostor.getLinearVelocity().scale(-20), player.getAbsolutePosition());
+    }
+    // Example usage
+    if (isKeyShiftPressed) {
+        togglePlayerSize();
+            // Move player creation after physics is enabled
+            // createPlayer();
+    }
+    if (isKeyQPressed) {
+        // togglePlayerSize();
+            createPlayer();
+    }
 
 
 
@@ -321,6 +334,40 @@ function togglePlayerSize() {
     isKeyShiftPressed = false;
 }
 
+export function changePlayerSize(scaleFactor) {
+    // Store the current linear and angular velocities
+    var currentLinearVelocity = player.physicsImpostor.getLinearVelocity();
+    var currentAngularVelocity = player.physicsImpostor.getAngularVelocity();
+
+    // Calculate new scale
+    var newScale = player.scaling.x * scaleFactor;
+    player.scaling = new BABYLON.Vector3(newScale, newScale, newScale);
+
+    // Calculate the change in radius based on scaling
+    var originalRadius = player.scaling.y / 2;
+    var newRadius = 2.5;
+
+    // Adjust properties based on newScale
+    player.position.y += newRadius - originalRadius;
+    jumpForce *= scaleFactor * 1.2; // Increase or decrease jump force
+    minZoomDistance *= scaleFactor; // Adjust zoom distance
+    maxZoomDistance *= scaleFactor; // Adjust zoom distance
+
+    // Dispose of the existing physics impostor
+    if (player.physicsImpostor) {
+        player.physicsImpostor.dispose();
+    }
+
+    // Adjust the mass based on the size (example logic, adjust as needed)
+    var newMass = newScale; // You might want to modify this formula based on your game's physics
+
+    // Create a new physics impostor to match the new size
+    player.physicsImpostor = new BABYLON.PhysicsImpostor(player, BABYLON.PhysicsImpostor.SphereImpostor, { mass: newMass, restitution: 0.6, friction: 0.7 }, scene);
+
+    // Reapply the saved velocities
+    player.physicsImpostor.setLinearVelocity(currentLinearVelocity);
+    player.physicsImpostor.setAngularVelocity(currentAngularVelocity);
+}
 
 
 function handleKeyDown(key) {

@@ -1,4 +1,8 @@
 import { grounds } from './scene.js';
+// Declare the array to store glowing balls
+export var glowBalls = [];
+import { player, createPlayer } from './createPlayer.js';
+import { changePlayerSize } from './content.js';
 
 export var createDynamicTextTexture = function (scene, text, textColor, backgroundColor) {
     var texture = new BABYLON.DynamicTexture("textTexture", 512, scene, true);
@@ -92,11 +96,15 @@ export var createDynamicTextTexture = function (scene, text, textColor, backgrou
   } else if (type === "sphere") {
     ground = BABYLON.MeshBuilder.CreateSphere("ground" + i, {diameter: calculatedSize}, scene);
   }
-  
+  // Check if ground is initialized
+if (!ground) {
+  console.error("Failed to create ground of type:", type, " at iteration:", i);
+  continue; // Skip this iteration if ground creation failed
+}
   // Assign position to the ground
   ground.position = calculatedPosition;
   
-  
+
       // Assign the name to the ground
       ground.name = "surface" + i;
   
@@ -130,3 +138,40 @@ export var createDynamicTextTexture = function (scene, text, textColor, backgrou
   
     return grounds;
   };
+
+  export function createGlowingBall(scene, position, index) {
+    // Create a sphere mesh for the glowing ball
+    var ball = BABYLON.MeshBuilder.CreateSphere("glowingBall" + index, { diameter: 1 }, scene);
+    ball.position = position;
+
+    // Add glowing material or shader
+    var glowMaterial = new BABYLON.StandardMaterial("glowMat" + index, scene);
+    // ... configure material properties for glowing effect
+    ball.material = glowMaterial;
+
+    // Set up collision detection (without physics)
+    ball.actionManager = new BABYLON.ActionManager(scene);
+    ball.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+        { trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger, parameter: player },
+        function () {
+            // Logic when player touches the ball
+            console.log("Ball Hit Lol");
+            changePlayerSize(1.2); // Increase player size
+
+            // Remove the ball after touch
+            ball.dispose();
+
+            // Optionally, remove the ball from the glowBalls array as well
+            const index = glowBalls.indexOf(ball);
+            if (index > -1) {
+                glowBalls.splice(index, 1);
+            }
+        }
+    ));
+
+    // Add the ball to the glowBalls array
+    glowBalls.push(ball);
+
+    return ball;
+}
+
