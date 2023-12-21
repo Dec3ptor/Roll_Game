@@ -334,32 +334,36 @@ function togglePlayerSize() {
     isKeyShiftPressed = false;
 }
 
-export function changePlayerSize(scaleFactor) {
+export async function changePlayerSize(scaleFactor) {
     // Store the current linear and angular velocities
     var currentLinearVelocity = player.physicsImpostor.getLinearVelocity();
     var currentAngularVelocity = player.physicsImpostor.getAngularVelocity();
 
-    // Calculate new scale
-    var newScale = player.scaling.x * scaleFactor;
-    player.scaling = new BABYLON.Vector3(newScale, newScale, newScale);
+    // Calculate the distance from the pivot to the bottom of the player before scaling
+    var halfOriginalHeight = player.scaling.y / 2.5;
 
-    // Calculate the change in radius based on scaling
-    var originalRadius = player.scaling.y / 2;
-    var newRadius = 2.5;
+    // Calculate and apply the new scaling factor
+    var newScale = player.scaling.x * scaleFactor; // This line was correct
+    player.scaling = new BABYLON.Vector3(newScale, newScale, newScale); // Apply the new scale
 
-    // Adjust properties based on newScale
-    player.position.y += newRadius - originalRadius;
-    jumpForce *= scaleFactor * 1.2; // Increase or decrease jump force
+    // Calculate the new half height after scaling
+    var halfNewHeight = player.scaling.y / 2;
+
+    // Adjust the player's y position so the bottom aligns with the ground
+    player.position.y += halfNewHeight - halfOriginalHeight;
+
+    // Adjust other properties based on newScale
+    jumpForce *= scaleFactor * 1.1; // Proportionally increase or decrease jump force
     minZoomDistance *= scaleFactor; // Adjust zoom distance
     maxZoomDistance *= scaleFactor; // Adjust zoom distance
 
     // Dispose of the existing physics impostor
     if (player.physicsImpostor) {
-        player.physicsImpostor.dispose();
+        await player.physicsImpostor.dispose();
     }
 
     // Adjust the mass based on the size (example logic, adjust as needed)
-    var newMass = newScale; // You might want to modify this formula based on your game's physics
+    var newMass = newScale; // Adjust the mass based on the new scale
 
     // Create a new physics impostor to match the new size
     player.physicsImpostor = new BABYLON.PhysicsImpostor(player, BABYLON.PhysicsImpostor.SphereImpostor, { mass: newMass, restitution: 0.6, friction: 0.7 }, scene);
